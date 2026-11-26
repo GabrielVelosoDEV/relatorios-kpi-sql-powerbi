@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatório de KPIs comerciais — Gabriel Veloso</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#111827;--mute:#6b7280;--line:#e5e7eb;--a:#7c3aed;--a2:#c4b5fd;--bad:#dc2626;--ok:#16a34a;--warn:#b45309}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:1160px;margin:0 auto;padding:0 22px}
+header{background:#1e1035;color:#fff;padding:34px 0 28px}
+header .k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#c4b5fd}
+header h1{margin:8px 0 6px;font-size:29px;letter-spacing:-.02em}header p{margin:0;color:#ddd6fe;max-width:800px}header a{color:#c4b5fd}
+.bar{display:flex;align-items:center;gap:12px;margin:22px 0 4px;flex-wrap:wrap}
+.bar label{font-size:13px;color:var(--mute)}
+select{font:inherit;padding:7px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:14px 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.card .n{font-size:12.5px;color:var(--mute)}.card b{display:block;font-size:25px;letter-spacing:-.02em}
+.card .d{font-size:12.5px}.up{color:var(--ok)}.down{color:var(--bad)}.neu{color:var(--mute)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.full{grid-column:1/-1}
+h2{font-size:16px;margin:0 0 4px}.sub{margin:0 0 12px;color:var(--mute);font-size:13px}
+.alert{background:#fffbeb;border:1px solid #fde68a;color:#78350f;border-radius:12px;padding:10px 14px;margin:6px 0;font-size:14px}
+.okmsg{background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d;border-radius:12px;padding:10px 14px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}th{color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+canvas{max-height:290px}
+.sec{margin:30px 0 12px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--a)}
+footer{color:var(--mute);font-size:13px;padding:26px 0 40px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="k">BI comercial · Relatório gerado automaticamente</div>
+  <h1>KPIs do funil de vendas</h1>
+  <p>8 mil leads reais do funil de marketing da Olist (2017–2018), modelados em SQL em um modelo estrela, com relatório mensal
+     e alertas gerados automaticamente. Código e modelo para o Power BI em
+     <a href="https://github.com/GabrielVelosoDEV/relatorios-kpi-sql-powerbi">github.com/GabrielVelosoDEV/relatorios-kpi-sql-powerbi</a>.</p>
+</div></header>
+
+<div class="wrap">
+  <div class="sec">Relatório do mês</div>
+  <div class="bar"><label for="mes">Mês de entrada dos leads</label><select id="mes"></select></div>
+  <div class="cards" id="cards"></div>
+  <div class="grid">
+    <div class="card"><h2>Alertas automáticos</h2><p class="sub">Regras aplicadas pelo script a cada mês</p><div id="alertas"></div></div>
+    <div class="card"><h2>Conversão por origem</h2><p class="sub">Leads do mês e negócios em até 60 dias</p>
+      <table><thead><tr><th>Origem</th><th>Leads</th><th>Negócios</th><th>Conversão</th></tr></thead><tbody id="tOrigem"></tbody></table></div>
+  </div>
+
+  <div class="sec">Panorama</div>
+  <div class="grid">
+    <div class="card full"><h2>Leads e conversão em 60 dias</h2><p class="sub">Por mês de entrada do lead. A operação de vendas começou em dez/2017.</p><canvas id="cMensal"></canvas></div>
+    <div class="card"><h2>Conversão por origem (período todo)</h2><p class="sub">Tamanho da barra = conversão em 60 dias</p><canvas id="cOrigem"></canvas></div>
+    <div class="card"><h2>Ativação dos sellers em 60 dias</h2><p class="sub">% dos sellers conquistados que venderam nos primeiros 60 dias</p><canvas id="cAtiv"></canvas></div>
+  </div>
+  <footer>Dados: <a href="https://www.kaggle.com/datasets/olistbr/marketing-funnel-olist">Marketing Funnel by Olist</a> e
+    <a href="https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce">Brazilian E-Commerce Public Dataset by Olist</a> (CC BY-NC-SA 4.0).
+    Projeto de Gabriel Veloso · <a href="https://www.linkedin.com/in/gabrielvelosodev/">LinkedIn</a></footer>
+</div>
+
+<script>
+const D = __DADOS__;
+const N = o => D.nomes[o] || o;
+const f1 = v => Number(v).toLocaleString("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1});
+const nm = m => new Date(m + "-15").toLocaleDateString("pt-BR", {month: "long", year: "numeric"});
+const sel = document.getElementById("mes");
+D.meses.forEach((d, i) => sel.add(new Option(nm(d.mes), i)));
+sel.value = D.meses.length - 1;
+function seta(v, suf) { if (v == null) return '<span class="neu">—</span>';
+  return `<span class="${v > 0 ? "up" : v < 0 ? "down" : "neu"}">${v > 0 ? "▲" : v < 0 ? "▼" : "="} ${f1(Math.abs(v))}${suf}</span>`; }
+function render() {
+  const d = D.meses[sel.value], k = d.kpi, a = d.anterior;
+  document.getElementById("cards").innerHTML = [
+    ["Leads qualificados", k.leads.toLocaleString("pt-BR"), seta(k.leads_var_mes_pct, "%") + " vs mês anterior"],
+    ["Negócios em 60 dias", k.negocios_60d, seta(k.negocios_60d - a.negocios_60d, "") + " vs mês anterior"],
+    ["Conversão em 60 dias", f1(k.conversao_60d_pct) + "%", seta(k.conversao_var_pp, " p.p.") + " vs mês anterior"],
+    ["Negócios fechados no mês", d.ganhos.negocios, "ciclo médio de " + d.ganhos.ciclo + " dias"],
+  ].map(([n, v, s]) => `<div class="card"><div class="n">${n}</div><b>${v}</b><div class="d">${s}</div></div>`).join("");
+  document.getElementById("alertas").innerHTML = d.alertas.length
+    ? d.alertas.map(x => `<div class="alert">⚠️ ${x}</div>`).join("") : '<div class="okmsg">Nenhum alerta neste mês.</div>';
+  document.getElementById("tOrigem").innerHTML = d.origens.map(o =>
+    `<tr><td>${N(o.origem)}</td><td>${o.leads}</td><td>${o.negocios}</td><td>${f1(o.conversao)}%</td></tr>`).join("");
+}
+sel.onchange = render; render();
+Chart.defaults.font.family = "Inter,system-ui,sans-serif"; Chart.defaults.color = "#6b7280";
+const M = D.panorama.mensal;
+new Chart(cMensal, {data: {labels: M.map(r => r.mes), datasets: [
+  {type: "bar", label: "Leads", data: M.map(r => r.leads), backgroundColor: "#ddd6fe", yAxisID: "y"},
+  {type: "line", label: "Conversão 60d (%)", data: M.map(r => r.conversao_60d_pct), borderColor: "#7c3aed", backgroundColor: "#7c3aed", yAxisID: "y1", tension: .25}]},
+  options: {interaction: {mode: "index", intersect: false}, scales: {y1: {position: "right", grid: {display: false}, ticks: {callback: v => v + "%"}}}}});
+const O = D.panorama.origem;
+new Chart(cOrigem, {type: "bar", data: {labels: O.map(r => N(r.origem)), datasets: [{label: "Conversão 60d", data: O.map(r => r.conversao_60d_pct),
+  backgroundColor: O.map(r => r.origem === "unknown" ? "#fbbf24" : "#7c3aed")}]},
+  options: {indexAxis: "y", plugins: {legend: {display: false}}, scales: {x: {ticks: {callback: v => v + "%"}}}}});
+const A = D.panorama.ativacao.filter(r => r.sellers_elegiveis >= 30);
+new Chart(cAtiv, {type: "bar", data: {labels: A.map(r => r.tipo_lead.replace("_", " ")), datasets: [{label: "Ativação 60d", data: A.map(r => r.ativacao_60d_pct), backgroundColor: "#a78bfa"}]},
+  options: {plugins: {legend: {display: false}}, scales: {y: {ticks: {callback: v => v + "%"}}}}});
+</script>
+</body>
+</html>

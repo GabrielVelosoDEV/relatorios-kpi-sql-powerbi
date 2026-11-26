@@ -1,0 +1,64 @@
+// =============================================================
+// Medidas DAX do relatório de KPIs comerciais
+// Crie uma tabela vazia chamada "_Medidas" e adicione cada medida abaixo.
+// Pré-requisito: dim_calendario marcada como tabela de datas (coluna data).
+// =============================================================
+
+// ---------- Volume e conversão (contexto: data de entrada do lead)
+Leads = COUNTROWS ( fct_leads )
+
+Negócios = SUM ( fct_leads[ganho] )
+
+Negócios 60d = SUM ( fct_leads[ganho_60d] )
+
+Conversão 60d % = DIVIDE ( [Negócios 60d], [Leads] )
+
+// ---------- Comparação com o mês anterior
+Leads mês anterior =
+CALCULATE ( [Leads], DATEADD ( dim_calendario[data], -1, MONTH ) )
+
+Var. Leads % =
+DIVIDE ( [Leads] - [Leads mês anterior], [Leads mês anterior] )
+
+Conversão mês anterior =
+CALCULATE ( [Conversão 60d %], DATEADD ( dim_calendario[data], -1, MONTH ) )
+
+Var. Conversão p.p. =
+( [Conversão 60d %] - [Conversão mês anterior] ) * 100
+
+// ---------- Negócios pela data de fechamento (relacionamento inativo)
+Negócios fechados no mês =
+CALCULATE (
+    SUM ( fct_leads[ganho] ),
+    USERELATIONSHIP ( dim_calendario[data], fct_leads[data_ganho_dia] )
+)
+
+// ---------- Ciclo de vendas (exclui registros com data de ganho antes do contato)
+Ciclo médio (dias) =
+CALCULATE (
+    AVERAGE ( fct_leads[ciclo_dias] ),
+    fct_leads[ganho] = 1,
+    fct_leads[flag_ciclo_negativo] = 0
+)
+
+Ciclo mediano (dias) =
+CALCULATE (
+    MEDIAN ( fct_leads[ciclo_dias] ),
+    fct_leads[ganho] = 1,
+    fct_leads[flag_ciclo_negativo] = 0
+)
+
+// ---------- Resultado dos sellers conquistados
+GMV = SUM ( fct_vendas_sellers[gmv] )
+
+Sellers conquistados = COUNTROWS ( dim_seller )
+
+Sellers com venda = DISTINCTCOUNT ( fct_vendas_sellers[seller_id] )
+
+GMV por seller conquistado = DIVIDE ( [GMV], [Sellers conquistados] )
+
+// ---------- Qualidade dos dados
+Leads sem origem % =
+DIVIDE ( CALCULATE ( [Leads], fct_leads[origem] = "unknown" ), [Leads] )
+
+Registros com ciclo negativo = SUM ( fct_leads[flag_ciclo_negativo] )
