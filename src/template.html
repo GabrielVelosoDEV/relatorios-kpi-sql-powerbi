@@ -69,13 +69,14 @@ const nm = m => new Date(m + "-15").toLocaleDateString("pt-BR", {month: "long", 
 const sel = document.getElementById("mes");
 D.meses.forEach((d, i) => sel.add(new Option(nm(d.mes), i)));
 sel.value = D.meses.length - 1;
-function seta(v, suf) { if (v == null) return '<span class="neu">—</span>';
-  return `<span class="${v > 0 ? "up" : v < 0 ? "down" : "neu"}">${v > 0 ? "▲" : v < 0 ? "▼" : "="} ${f1(Math.abs(v))}${suf}</span>`; }
+function seta(v, suf, inteiro) { if (v == null) return '<span class="neu">—</span>';
+  const n = inteiro ? Math.abs(v).toLocaleString("pt-BR") : f1(Math.abs(v));
+  return `<span class="${v > 0 ? "up" : v < 0 ? "down" : "neu"}">${v > 0 ? "▲" : v < 0 ? "▼" : "="} ${n}${suf}</span>`; }
 function render() {
   const d = D.meses[sel.value], k = d.kpi, a = d.anterior;
   document.getElementById("cards").innerHTML = [
     ["Leads qualificados", k.leads.toLocaleString("pt-BR"), seta(k.leads_var_mes_pct, "%") + " vs mês anterior"],
-    ["Negócios em 60 dias", k.negocios_60d, seta(k.negocios_60d - a.negocios_60d, "") + " vs mês anterior"],
+    ["Negócios em 60 dias", k.negocios_60d, seta(k.negocios_60d - a.negocios_60d, "", true) + " vs mês anterior"],
     ["Conversão em 60 dias", f1(k.conversao_60d_pct) + "%", seta(k.conversao_var_pp, " p.p.") + " vs mês anterior"],
     ["Negócios fechados no mês", d.ganhos.negocios, "ciclo médio de " + d.ganhos.ciclo + " dias"],
   ].map(([n, v, s]) => `<div class="card"><div class="n">${n}</div><b>${v}</b><div class="d">${s}</div></div>`).join("");
